@@ -1,12 +1,16 @@
 import os
 import json
-import datetime
+from datetime import datetime
+from zoneinfo import ZoneInfo  # Python 3.9+
 
 import gspread
 from google.oauth2.service_account import Credentials
 
 # Google Sheets API Scope
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+
+# Unsere Standard-Zeitzone
+VIENNA_TZ = ZoneInfo("Europe/Vienna")
 
 
 def _get_client():
@@ -39,6 +43,11 @@ def get_worksheet(sheet_name: str):
     return spreadsheet.worksheet(sheet_name)
 
 
+def _now_vienna():
+    """Aktuelle Zeit in Europe/Vienna als datetime-Objekt."""
+    return datetime.now(VIENNA_TZ)
+
+
 def append_summary_row(summary_dict: dict):
     """
     Write one summary row into the 'summary' sheet.
@@ -52,7 +61,7 @@ def append_summary_row(summary_dict: dict):
     """
     ws = get_worksheet("summary")
 
-    now = datetime.datetime.now()
+    now = _now_vienna()
     row = [
         now.strftime("%Y-%m-%d"),
         now.strftime("%H:%M"),
@@ -81,7 +90,7 @@ def append_location_rows(locations: list):
     """
     ws = get_worksheet("locations")
 
-    now = datetime.datetime.now()
+    now = _now_vienna()
     date_str = now.strftime("%Y-%m-%d")
     time_str = now.strftime("%H:%M")
 
