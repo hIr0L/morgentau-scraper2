@@ -1,24 +1,43 @@
+import os
+import json
 import datetime
+
 import gspread
 from google.oauth2.service_account import Credentials
 
-# Path to your service account JSON file
-SERVICE_ACCOUNT_FILE = "/Users/roli/.keys/morgentau-location-monitoring-021aa2d9368f.json"
-
-# Your Google Sheets spreadsheet ID (replace this!)
-SPREADSHEET_ID = "1vwToMFfuHx8I96oXbHYZPAIkcwRRjHgwzPkz8GpTbLs"
-
+# Google Sheets API Scope
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
-def get_worksheet(sheet_name: str):
-    """Return a worksheet object by name."""
-    credentials = Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE,
+
+def _get_client():
+    """
+    Erzeuge einen gspread-Client auf Basis des Service-Account-JSONs,
+    das in der Umgebungsvariable GOOGLE_SERVICE_ACCOUNT_JSON steckt.
+    (Kommt in GitHub Actions aus dem Secret gleichen Namens.)
+    """
+    service_account_json = os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]
+    service_account_info = json.loads(service_account_json)
+
+    credentials = Credentials.from_service_account_info(
+        service_account_info,
         scopes=SCOPES,
     )
-    client = gspread.authorize(credentials)
-    spreadsheet = client.open_by_key(SPREADSHEET_ID)
+    return gspread.authorize(credentials)
+
+
+def get_worksheet(sheet_name: str):
+    """
+    Öffnet das Google Sheet über die SHEET_ID (aus Umgebungsvariable/Secret)
+    und gibt das Worksheet mit dem gegebenen Namen zurück.
+    """
+    client = _get_client()
+
+    # SHEET_ID kommt in GitHub Actions aus dem Secret SHEET_ID
+    spreadsheet_id = os.environ["SHEET_ID"]
+    spreadsheet = client.open_by_key(spreadsheet_id)
+
     return spreadsheet.worksheet(sheet_name)
+
 
 def append_summary_row(summary_dict: dict):
     """
@@ -43,6 +62,7 @@ def append_summary_row(summary_dict: dict):
     ]
 
     ws.append_row(row, value_input_option="USER_ENTERED")
+
 
 def append_location_rows(locations: list):
     """
