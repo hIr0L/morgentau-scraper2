@@ -2,7 +2,7 @@ name: Morgentau scraper
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # alle 15 Minuten
+    - cron: "0 */4 * * *"
   workflow_dispatch:         # manuell startbar im Actions Tab
 
 jobs:
