@@ -34,7 +34,10 @@ FREE_SELECTOR   = "rect.emptyLotMapItem"
 async def scrape_location(page, location_label, location_value):
     """Select a location and count booked/free fields inside the map iframe."""
     # 1) Select location in dropdown
+    await page.wait_for_selector(LOCATION_SELECT_SELECTOR, state="visible", timeout=60000)
+    await page.wait_for_selector(f"{LOCATION_SELECT_SELECTOR} option[value='{location_value}']", state="attached", timeout=60000)
     await page.select_option(LOCATION_SELECT_SELECTOR, value=location_value)
+
 
     # 2) Wait a bit for the map iframe to reload
     await page.wait_for_timeout(2000)
