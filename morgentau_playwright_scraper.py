@@ -21,7 +21,6 @@ LOCATION_OPTIONS = [
     ("Leonding: Georg-Erber-Straße", "807"),
     ("Graz: Andritz – St. Veiterstraße", "816"),
     ("Graz: Mariatrost – Tannhofweg", "817"),
-    ("Graz: Straßenbahn – Martinhofstraße/Weiberfelderweg", "814"),
 ]
 
 
