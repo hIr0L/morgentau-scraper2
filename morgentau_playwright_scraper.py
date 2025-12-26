@@ -58,5 +58,5 @@ async def scrape_location(page, label, value):
             break
 
     if not map_frame:
-    print(f"SKIP: map frame not found for {label}")
-    return {"name": label, "total_fields": 0, "booked_fields": 0, "free_fields": 0}
+        print(f"SKIP: map frame not found for {label}")
+        return {"name": label, "total_fields": 0, "booked_fields": 0, "free_fields": 0}
