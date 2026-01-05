@@ -59,12 +59,11 @@ async def scrape_location(page, label: str, value: str) -> dict:
         print(f"SKIP: select element missing for {label}")
         return {"name": label, "total_fields": 0, "booked_fields": 0, "free_fields": 0}
 
-    # give JSF time to update iframe/map after location change
+    # Give JSF time to update iframe/map after location change
     await page.wait_for_timeout(2500)
 
     map_frame = await _find_map_frame(page)
     if not map_frame:
-        # sometimes frame appears a bit later
         await page.wait_for_timeout(2500)
         map_frame = await _find_map_frame(page)
 
@@ -73,11 +72,10 @@ async def scrape_location(page, label: str, value: str) -> dict:
         return {"name": label, "total_fields": 0, "booked_fields": 0, "free_fields": 0}
 
     # Wait for at least one of the SVG rect types to exist (or time out)
-    # If neither exists, counts will be 0.
     try:
         await map_frame.wait_for_selector(
             f"{BOOKED_SELECTOR}, {FREE_SELECTOR}",
-            timeout=30000
+            timeout=30000,
         )
     except Exception:
         pass
@@ -106,7 +104,6 @@ async def main():
         print(f"Opening: {URL}")
         await page.goto(URL, wait_until="domcontentloaded", timeout=60000)
 
-        # Ensure the location select exists
         await page.wait_for_selector(LOCATION_SELECT_SELECTOR, timeout=60000)
 
         for label, value in LOCATION_OPTIONS:
@@ -114,11 +111,17 @@ async def main():
                 res = await scrape_location(page, label, value)
             except Exception as e:
                 print(f"ERROR scraping {label}: {repr(e)}")
-                res = {"name": label, "total_fields": 0, "booked_fields": 0, "free_fields": 0}
+                res = {
+                    "name": label,
+                    "total_fields": 0,
+                    "booked_fields": 0,
+                    "free_fields": 0,
+                }
             results.append(res)
 
         await browser.close()
 
+    # Build summary
     summary = {
         "total_fields": sum(r["total_fields"] for r in results),
         "total_booked": sum(r["booked_fields"] for r in results),
@@ -128,10 +131,17 @@ async def main():
     print("\n=== SUMMARY ===")
     print(summary)
 
-    # Write to Google Sheets (fail loudly if it doesn't work)
+    # ---- Google Sheets write (with full visibility) ----
     try:
+        print("[scraper] About to write summary:", summary)
         append_summary_row(summary)
+
+        print("[scraper] About to write locations count:", len(results))
+        if results:
+            print("[scraper] First location preview:", results[0])
+
         append_location_rows(results)
+
         print("✅ Google Sheets write successful")
     except Exception as e:
         print("❌ Google Sheets write failed:", repr(e))
