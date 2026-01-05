@@ -6,20 +6,26 @@ from zoneinfo import ZoneInfo  # Python 3.9+
 import gspread
 from google.oauth2.service_account import Credentials
 
-# Google Sheets API Scope
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-
-# Unsere Standard-Zeitzone
 VIENNA_TZ = ZoneInfo("Europe/Vienna")
+
+
+def _require_env(name: str) -> str:
+    val = os.getenv(name)
+    if not val:
+        raise RuntimeError(
+            f"Missing env var: {name}. "
+            f"Make sure it exists locally or is set in GitHub Actions Secrets."
+        )
+    return val
 
 
 def _get_client():
     """
-    Erzeuge einen gspread-Client auf Basis des Service-Account-JSONs,
-    das in der Umgebungsvariable GOOGLE_SERVICE_ACCOUNT_JSON steckt.
-    (Kommt in GitHub Actions aus dem Secret gleichen Namens.)
+    Create gspread client from Service Account JSON stored in env var
+    GOOGLE_SERVICE_ACCOUNT_JSON (usually a GitHub Actions secret).
     """
-    service_account_json = os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]
+    service_account_json = _require_env("GOOGLE_SERVICE_ACCOUNT_JSON")
     service_account_info = json.loads(service_account_json)
 
     credentials = Credentials.from_service_account_info(
@@ -31,43 +37,49 @@ def _get_client():
 
 def get_worksheet(sheet_name: str):
     """
-    Öffnet das Google Sheet über die SHEET_ID (aus Umgebungsvariable/Secret)
-    und gibt das Worksheet mit dem gegebenen Namen zurück.
+    Open Google Sheet by SHEET_ID env var and return the named worksheet.
+    Expects worksheet/tab names:
+      - summary
+      - locations
     """
     client = _get_client()
+    spreadsheet_id = _require_env("SHEET_ID")
 
-    # SHEET_ID kommt in GitHub Actions aus dem Secret SHEET_ID
-    spreadsheet_id = os.environ["SHEET_ID"]
     spreadsheet = client.open_by_key(spreadsheet_id)
 
-    return spreadsheet.worksheet(sheet_name)
+    try:
+        return spreadsheet.worksheet(sheet_name)
+    except Exception as e:
+        raise RuntimeError(
+            f"Worksheet '{sheet_name}' not found. "
+            f"Check tab name spelling/case in the Google Sheet."
+        ) from e
 
 
 def _now_vienna():
-    """Aktuelle Zeit in Europe/Vienna als datetime-Objekt."""
     return datetime.now(VIENNA_TZ)
 
 
 def append_summary_row(summary_dict: dict):
     """
-    Write one summary row into the 'summary' sheet.
+    Append one row to the 'summary' sheet.
 
     summary_dict example:
     {
-        "total_fields": 120,
-        "total_booked": 80,
-        "total_free": 40,
+      "total_fields": 120,
+      "total_booked": 80,
+      "total_free": 40,
     }
     """
     ws = get_worksheet("summary")
-
     now = _now_vienna()
+
     row = [
         now.strftime("%Y-%m-%d"),
         now.strftime("%H:%M"),
-        summary_dict.get("total_fields", 0),
-        summary_dict.get("total_booked", 0),
-        summary_dict.get("total_free", 0),
+        int(summary_dict.get("total_fields", 0)),
+        int(summary_dict.get("total_booked", 0)),
+        int(summary_dict.get("total_free", 0)),
     ]
 
     ws.append_row(row, value_input_option="USER_ENTERED")
@@ -75,17 +87,12 @@ def append_summary_row(summary_dict: dict):
 
 def append_location_rows(locations: list):
     """
-    Write multiple location rows into the 'locations' sheet.
+    Append multiple rows to the 'locations' sheet.
 
     locations: list of dicts, e.g.
     [
-        {
-            "name": "Location 1",
-            "total_fields": 15,
-            "booked_fields": 10,
-            "free_fields": 5,
-        },
-        ...
+      {"name":"...", "total_fields":..., "booked_fields":..., "free_fields":...},
+      ...
     ]
     """
     ws = get_worksheet("locations")
@@ -99,10 +106,10 @@ def append_location_rows(locations: list):
         rows.append([
             date_str,
             time_str,
-            loc.get("name", ""),
-            loc.get("total_fields", 0),
-            loc.get("booked_fields", 0),
-            loc.get("free_fields", 0),
+            str(loc.get("name", "")),
+            int(loc.get("total_fields", 0)),
+            int(loc.get("booked_fields", 0)),
+            int(loc.get("free_fields", 0)),
         ])
 
     if rows:
