@@ -1,11 +1,28 @@
-from google_sheet_helper import append_location_row
+import os
+from google_sheet_helper import append_summary_row, append_location_rows
 
-# Test row to verify everything works
-append_location_row({
-    "location": "TEST",
-    "booked_fields": 5,
-    "free_fields": 3,
-})
+# Turn on debug logs for this test run
+os.environ["DEBUG"] = "1"
 
-print("Successfully wrote a test row to Google Sheets!")
+def main():
+    # Write a summary row
+    append_summary_row({
+        "total_fields": 999,
+        "total_booked": 111,
+        "total_free": 888,
+    })
 
+    # Write one location row
+    append_location_rows([
+        {
+            "name": "TEST: write_check",
+            "total_fields": 10,
+            "booked_fields": 3,
+            "free_fields": 7,
+        }
+    ])
+
+    print("✅ test_write.py finished: wrote to Google Sheet successfully.")
+
+if __name__ == "__main__":
+    main()
